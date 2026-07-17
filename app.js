@@ -13,7 +13,7 @@ function salvar(lista) {
 
 // ── State ─────────────────────────────────────────────────────────────────────
 
-let restaurantes = carregar();
+let restaurantes = [];
 let filtroStatus = 'todos';
 let busca = '';
 let editandoId = null;
@@ -324,6 +324,9 @@ function setFiltro(status) {
 // ── Init ──────────────────────────────────────────────────────────────────────
 
 document.addEventListener('DOMContentLoaded', () => {
+  // Carregar dados após DOM pronto (necessário para iOS PWA)
+  restaurantes = carregar();
+
   // Service Worker
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('./service-worker.js').catch(() => {});
