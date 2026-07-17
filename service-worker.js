@@ -1,4 +1,4 @@
-const CACHE_NAME = 'restaurantes-v2';
+const CACHE_NAME = 'restaurantes-v3';
 const ASSETS = [
   './index.html',
   './style.css',
@@ -19,7 +19,14 @@ self.addEventListener('activate', e => {
 });
 
 self.addEventListener('fetch', e => {
+  // Network first: tenta rede, cai no cache só se offline
   e.respondWith(
-    caches.match(e.request).then(cached => cached || fetch(e.request))
+    fetch(e.request)
+      .then(response => {
+        const clone = response.clone();
+        caches.open(CACHE_NAME).then(c => c.put(e.request, clone));
+        return response;
+      })
+      .catch(() => caches.match(e.request))
   );
 });
