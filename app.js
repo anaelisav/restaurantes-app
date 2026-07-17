@@ -1,15 +1,20 @@
-// ── Storage ──────────────────────────────────────────────────────────────────
+// ── Firebase ──────────────────────────────────────────────────────────────────
 
-const STORAGE_KEY = 'restaurantes_data';
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getFirestore, collection, doc, onSnapshot, setDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-function carregar() {
-  try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; }
-  catch { return []; }
-}
+const firebaseConfig = {
+  apiKey: "AIzaSyDCG6S_ZxU8r7Sw0VPqCaNXw1yDFBa3ZQ8",
+  authDomain: "restaurantes-app-e48c3.firebaseapp.com",
+  projectId: "restaurantes-app-e48c3",
+  storageBucket: "restaurantes-app-e48c3.firebasestorage.app",
+  messagingSenderId: "821868748137",
+  appId: "1:821868748137:web:a76310dc56a6fbb71131f8"
+};
 
-function salvar(lista) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(lista));
-}
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const colecao = collection(db, "restaurantes");
 
 // ── State ─────────────────────────────────────────────────────────────────────
 
@@ -18,8 +23,26 @@ let filtroStatus = 'todos';
 let busca = '';
 let editandoId = null;
 let adicionandoVisitaId = null;
-let editandoVisitaInfo = null; // { restauranteId, visitaIdx }
+let editandoVisitaInfo = null;
 let estrelasSelecionadas = 0;
+
+// ── Firestore ─────────────────────────────────────────────────────────────────
+
+function escutarDados() {
+  onSnapshot(colecao, snapshot => {
+    restaurantes = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+    renderLista();
+  });
+}
+
+async function salvarRestauranteDB(r) {
+  const { id, ...dados } = r;
+  await setDoc(doc(db, "restaurantes", id), dados);
+}
+
+async function excluirRestauranteDB(id) {
+  await deleteDoc(doc(db, "restaurantes", id));
+}
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -186,7 +209,7 @@ function abrirEditar(id) {
   abrirModal('modal-restaurante');
 }
 
-function salvarRestaurante(e) {
+async function salvarRestaurante(e) {
   e.preventDefault();
   const nome = document.getElementById('input-nome').value.trim();
   if (!nome) return;
@@ -199,36 +222,31 @@ function salvarRestaurante(e) {
   };
 
   if (editandoId) {
-    const idx = restaurantes.findIndex(r => r.id === editandoId);
-    restaurantes[idx] = { ...restaurantes[idx], ...dados };
+    const r = restaurantes.find(x => x.id === editandoId);
+    await salvarRestauranteDB({ ...r, ...dados });
     snackbar('Restaurante atualizado!');
   } else {
-    restaurantes.push({ id: gerarId(), visitas: [], ...dados });
+    const novo = { id: gerarId(), visitas: [], ...dados };
+    await salvarRestauranteDB(novo);
     snackbar('Restaurante adicionado!');
   }
 
-  salvar(restaurantes);
   fecharModal('modal-restaurante');
-  renderLista();
 }
 
-function confirmarExcluir(id) {
+async function confirmarExcluir(id) {
   const r = restaurantes.find(x => x.id === id);
   if (!r) return;
   if (confirm(`Excluir "${r.nome}"? Esta ação não pode ser desfeita.`)) {
-    restaurantes = restaurantes.filter(x => x.id !== id);
-    salvar(restaurantes);
-    renderLista();
+    await excluirRestauranteDB(id);
     snackbar('Restaurante excluído.', '#c0392b');
   }
 }
 
-function marcarFui(id) {
-  const idx = restaurantes.findIndex(r => r.id === id);
-  if (idx === -1) return;
-  restaurantes[idx].fui = true;
-  salvar(restaurantes);
-  renderLista();
+async function marcarFui(id) {
+  const r = restaurantes.find(x => x.id === id);
+  if (!r) return;
+  await salvarRestauranteDB({ ...r, fui: true });
   setTimeout(() => abrirAdicionarVisita(id), 100);
 }
 
@@ -241,7 +259,6 @@ function abrirAdicionarVisita(id) {
   document.getElementById('form-visita').reset();
   setEstrelas(0);
   abrirModal('modal-visita');
-  // Abrir o card para ver a visita depois
   const body = document.getElementById(`body-${id}`);
   if (body) body.classList.add('open');
 }
@@ -264,7 +281,7 @@ function abrirEditarVisita(restauranteId, visitaIdx) {
   abrirModal('modal-visita');
 }
 
-function salvarVisita(e) {
+async function salvarVisita(e) {
   e.preventDefault();
   const visita = {
     data: document.getElementById('input-visita-data').value,
@@ -274,29 +291,30 @@ function salvarVisita(e) {
     estrelas: estrelasSelecionadas,
   };
 
+  const r = restaurantes.find(x => x.id === adicionandoVisitaId);
+  if (!r) return;
+
+  const visitas = [...(r.visitas || [])];
+
   if (editandoVisitaInfo) {
-    const { restauranteId, visitaIdx } = editandoVisitaInfo;
-    const idx = restaurantes.findIndex(r => r.id === restauranteId);
-    restaurantes[idx].visitas[visitaIdx] = visita;
+    visitas[editandoVisitaInfo.visitaIdx] = visita;
     snackbar('Visita atualizada!');
   } else {
-    const idx = restaurantes.findIndex(r => r.id === adicionandoVisitaId);
-    if (!restaurantes[idx].visitas) restaurantes[idx].visitas = [];
-    restaurantes[idx].visitas.unshift(visita);
+    visitas.unshift(visita);
     snackbar('Visita adicionada!');
   }
 
-  salvar(restaurantes);
+  await salvarRestauranteDB({ ...r, visitas });
   fecharModal('modal-visita');
-  renderLista();
 }
 
-function excluirVisita(restauranteId, visitaIdx) {
+async function excluirVisita(restauranteId, visitaIdx) {
   if (!confirm('Excluir esta visita?')) return;
-  const idx = restaurantes.findIndex(r => r.id === restauranteId);
-  restaurantes[idx].visitas.splice(visitaIdx, 1);
-  salvar(restaurantes);
-  renderLista();
+  const r = restaurantes.find(x => x.id === restauranteId);
+  if (!r) return;
+  const visitas = [...(r.visitas || [])];
+  visitas.splice(visitaIdx, 1);
+  await salvarRestauranteDB({ ...r, visitas });
   const body = document.getElementById(`body-${restauranteId}`);
   if (body) body.classList.add('open');
   snackbar('Visita excluída.', '#c0392b');
@@ -321,35 +339,38 @@ function setFiltro(status) {
   renderLista();
 }
 
+// ── Expose globals (needed for inline onclick handlers) ───────────────────────
+
+window.toggleCard = toggleCard;
+window.abrirEditar = abrirEditar;
+window.confirmarExcluir = confirmarExcluir;
+window.abrirAdicionarVisita = abrirAdicionarVisita;
+window.abrirEditarVisita = abrirEditarVisita;
+window.excluirVisita = excluirVisita;
+window.marcarFui = marcarFui;
+window.abrirAdicionar = abrirAdicionar;
+window.fecharModal = fecharModal;
+window.setFiltro = setFiltro;
+
 // ── Init ──────────────────────────────────────────────────────────────────────
 
 document.addEventListener('DOMContentLoaded', () => {
-  // Carregar dados após DOM pronto (necessário para iOS PWA)
-  restaurantes = carregar();
-
-  // Service Worker
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('./service-worker.js').catch(() => {});
   }
 
-  // Busca
   document.getElementById('busca').addEventListener('input', e => {
     busca = e.target.value;
     renderLista();
   });
 
-  // Filtros
   document.querySelectorAll('.filter-chip').forEach(el => {
     el.addEventListener('click', () => setFiltro(el.dataset.filtro));
   });
 
-  // Form restaurante
   document.getElementById('form-restaurante').addEventListener('submit', salvarRestaurante);
-
-  // Form visita
   document.getElementById('form-visita').addEventListener('submit', salvarVisita);
 
-  // Estrelas
   document.querySelectorAll('.star-input span').forEach((el, i) => {
     el.addEventListener('click', () => setEstrelas(i + 1));
     el.addEventListener('mouseover', () => {
@@ -360,12 +381,11 @@ document.addEventListener('DOMContentLoaded', () => {
     el.addEventListener('mouseleave', () => setEstrelas(estrelasSelecionadas));
   });
 
-  // Fechar modais ao clicar fora
   document.querySelectorAll('.modal-overlay').forEach(overlay => {
     overlay.addEventListener('click', e => {
       if (e.target === overlay) fecharModal(overlay.id);
     });
   });
 
-  renderLista();
+  escutarDados();
 });
