@@ -16,6 +16,24 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const colecao = collection(db, "restaurantes");
 
+// ── Cloudinary ────────────────────────────────────────────────────────────────
+
+const CLOUDINARY_CLOUD = 'bf0wkznh';
+const CLOUDINARY_PRESET = 'restaurantes_upload';
+
+async function uploadFoto(file) {
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('upload_preset', CLOUDINARY_PRESET);
+  const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD}/image/upload`, {
+    method: 'POST',
+    body: formData,
+  });
+  const data = await res.json();
+  if (!data.secure_url) throw new Error('Falha no upload');
+  return data.secure_url;
+}
+
 // ── State ─────────────────────────────────────────────────────────────────────
 
 let restaurantes = [];
@@ -25,6 +43,7 @@ let editandoId = null;
 let adicionandoVisitaId = null;
 let editandoVisitaInfo = null;
 let estrelasSelecionadas = 0;
+let fotosVisita = []; // URLs já enviadas ao Cloudinary
 
 // ── Firestore ─────────────────────────────────────────────────────────────────
 
@@ -161,6 +180,10 @@ function renderLista() {
                     ${v.pratos ? `<div class="visita-linha"><strong>Pratos:</strong> ${escHtml(v.pratos)}</div>` : ''}
                     ${v.drinks ? `<div class="visita-linha"><strong>Drinks:</strong> ${escHtml(v.drinks)}</div>` : ''}
                     ${v.comentario ? `<div class="visita-comentario">${escHtml(v.comentario)}</div>` : ''}
+                    ${(v.fotos && v.fotos.length) ? `
+                      <div class="fotos-grid">
+                        ${v.fotos.map(url => `<img src="${url}" class="foto-miniatura" onclick="abrirFotoGrande('${url}')" />`).join('')}
+                      </div>` : ''}
                   </div>`).join('')
               }
             </div>
@@ -271,9 +294,11 @@ async function marcarFui(id) {
 function abrirAdicionarVisita(id) {
   adicionandoVisitaId = id;
   editandoVisitaInfo = null;
+  fotosVisita = [];
   document.getElementById('modal-visita-titulo').textContent = 'Nova Visita';
   document.getElementById('form-visita').reset();
   setEstrelas(0);
+  renderPreviewFotos();
   abrirModal('modal-visita');
   const body = document.getElementById(`body-${id}`);
   if (body) body.classList.add('open');
@@ -287,6 +312,7 @@ function abrirEditarVisita(restauranteId, visitaIdx) {
 
   adicionandoVisitaId = restauranteId;
   editandoVisitaInfo = { restauranteId, visitaIdx };
+  fotosVisita = [...(v.fotos || [])];
 
   document.getElementById('modal-visita-titulo').textContent = 'Editar Visita';
   document.getElementById('input-visita-data').value = v.data || '';
@@ -294,17 +320,36 @@ function abrirEditarVisita(restauranteId, visitaIdx) {
   document.getElementById('input-visita-drinks').value = v.drinks || '';
   document.getElementById('input-visita-comentario').value = v.comentario || '';
   setEstrelas(v.estrelas || 0);
+  renderPreviewFotos();
   abrirModal('modal-visita');
 }
 
 async function salvarVisita(e) {
   e.preventDefault();
+
+  const btnSalvar = document.getElementById('btn-salvar-visita');
+  btnSalvar.disabled = true;
+  btnSalvar.textContent = 'Salvando…';
+
+  // Faz upload de novas fotos (File objects) e mantém URLs já existentes
+  const arquivos = document.getElementById('input-visita-fotos').files;
+  const novasUrls = [];
+  for (const file of arquivos) {
+    try {
+      const url = await uploadFoto(file);
+      novasUrls.push(url);
+    } catch {
+      snackbar('Erro ao enviar uma foto.', '#c0392b');
+    }
+  }
+
   const visita = {
     data: document.getElementById('input-visita-data').value,
     pratos: document.getElementById('input-visita-pratos').value.trim(),
     drinks: document.getElementById('input-visita-drinks').value.trim(),
     comentario: document.getElementById('input-visita-comentario').value.trim(),
     estrelas: estrelasSelecionadas,
+    fotos: [...fotosVisita, ...novasUrls],
   };
 
   const r = restaurantes.find(x => x.id === adicionandoVisitaId);
@@ -321,6 +366,8 @@ async function salvarVisita(e) {
   }
 
   await salvarRestauranteDB({ ...r, visitas });
+  btnSalvar.disabled = false;
+  btnSalvar.textContent = 'Salvar';
   fecharModal('modal-visita');
 }
 
@@ -334,6 +381,30 @@ async function excluirVisita(restauranteId, visitaIdx) {
   const body = document.getElementById(`body-${restauranteId}`);
   if (body) body.classList.add('open');
   snackbar('Visita excluída.', '#c0392b');
+}
+
+// ── Fotos ─────────────────────────────────────────────────────────────────────
+
+function renderPreviewFotos() {
+  const container = document.getElementById('fotos-preview');
+  if (!container) return;
+  container.innerHTML = fotosVisita.map((url, i) => `
+    <div class="foto-thumb">
+      <img src="${url}" alt="Foto ${i+1}" onclick="abrirFotoGrande('${url}')"/>
+      <button class="foto-remover" onclick="removerFoto(${i})">×</button>
+    </div>
+  `).join('');
+}
+
+function removerFoto(idx) {
+  fotosVisita.splice(idx, 1);
+  renderPreviewFotos();
+}
+
+function abrirFotoGrande(url) {
+  const overlay = document.getElementById('modal-foto');
+  document.getElementById('foto-grande').src = url;
+  overlay.classList.add('open');
 }
 
 // ── Stars ─────────────────────────────────────────────────────────────────────
@@ -367,6 +438,8 @@ window.marcarFui = marcarFui;
 window.abrirAdicionar = abrirAdicionar;
 window.fecharModal = fecharModal;
 window.setFiltro = setFiltro;
+window.removerFoto = removerFoto;
+window.abrirFotoGrande = abrirFotoGrande;
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 

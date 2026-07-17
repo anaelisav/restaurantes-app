@@ -112,11 +112,27 @@
           <textarea id="input-visita-drinks" placeholder="Ex: Negroni, Vinho tinto, Água com gás…" style="min-height:64px;"></textarea>
         </div>
 
+        <hr class="section-divider" />
+        <p class="section-title">Fotos</p>
+
+        <div class="form-group">
+          <label for="input-visita-fotos">Adicionar fotos</label>
+          <input type="file" id="input-visita-fotos" accept="image/*" multiple />
+        </div>
+        <div id="fotos-preview" class="fotos-preview"></div>
+
         <div class="form-actions">
           <button type="button" class="btn btn-secondary" onclick="fecharModal('modal-visita')">Cancelar</button>
-          <button type="submit" class="btn btn-primary">Salvar</button>
+          <button type="submit" class="btn btn-primary" id="btn-salvar-visita">Salvar</button>
         </div>
       </form>
+    </div>
+  </div>
+
+  <!-- Modal: Foto grande -->
+  <div class="modal-overlay" id="modal-foto" onclick="fecharModal('modal-foto')">
+    <div class="modal-foto-inner">
+      <img id="foto-grande" src="" alt="Foto" />
     </div>
   </div>
 
