@@ -71,38 +71,35 @@ function snackbar(msg, cor = '#27ae60') {
 // ── Render ────────────────────────────────────────────────────────────────────
 
 function ultimaVisitaData(r) {
-  if (!r.visitas || r.visitas.length === 0) return '';
-  return r.visitas.map(v => v.data || '').sort().reverse()[0];
+  if (!r.visitas || r.visitas.length === 0) return null;
+  const datas = r.visitas.map(v => v.data || '').filter(d => d);
+  return datas.length ? datas.sort().reverse()[0] : null;
 }
 
 function filtrar() {
-  return restaurantes
-    .filter(r => {
-      if (filtroStatus === 'fui' && !r.fui) return false;
-      if (filtroStatus === 'quero' && r.fui) return false;
-      if (filtroStatus === 'recente' && !r.fui) return false;
-      if (filtroStatus === 'antigo' && !r.fui) return false;
-      const q = busca.toLowerCase();
-      if (!q) return true;
-      return (
-        r.nome.toLowerCase().includes(q) ||
-        r.bairro.toLowerCase().includes(q) ||
-        r.culinaria.toLowerCase().includes(q)
-      );
-    })
-    .sort((a, b) => {
-      if (filtroStatus === 'recente') {
-        return ultimaVisitaData(b).localeCompare(ultimaVisitaData(a));
-      }
-      if (filtroStatus === 'antigo') {
-        const da = ultimaVisitaData(a), db2 = ultimaVisitaData(b);
-        if (!da && !db2) return a.nome.localeCompare(b.nome, 'pt-BR');
-        if (!da) return 1;
-        if (!db2) return -1;
-        return da.localeCompare(db2);
-      }
-      return a.nome.localeCompare(b.nome, 'pt-BR');
-    });
+  let lista = restaurantes.filter(r => {
+    if (filtroStatus === 'fui' && !r.fui) return false;
+    if (filtroStatus === 'quero' && r.fui) return false;
+    if (filtroStatus === 'recente' && (!r.fui || !ultimaVisitaData(r))) return false;
+    if (filtroStatus === 'antigo' && (!r.fui || !ultimaVisitaData(r))) return false;
+    const q = busca.toLowerCase();
+    if (!q) return true;
+    return (
+      r.nome.toLowerCase().includes(q) ||
+      (r.bairro || '').toLowerCase().includes(q) ||
+      (r.culinaria || '').toLowerCase().includes(q)
+    );
+  });
+
+  if (filtroStatus === 'recente') {
+    lista.sort((a, b) => ultimaVisitaData(b).localeCompare(ultimaVisitaData(a)));
+  } else if (filtroStatus === 'antigo') {
+    lista.sort((a, b) => ultimaVisitaData(a).localeCompare(ultimaVisitaData(b)));
+  } else {
+    lista.sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+  }
+
+  return lista;
 }
 
 function renderLista() {
