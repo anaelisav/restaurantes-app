@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#e94560" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Restaurantes" />
+  <title>Meus Restaurantes</title>
+  <link rel="manifest" href="manifest.json" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- Header -->
+  <header>
+    <h1>🍽️ <span>Meus</span> Restaurantes</h1>
+  </header>
+
+  <!-- Search & Filters -->
+  <div class="controls">
+    <div class="search-box">
+      <span>🔍</span>
+      <input type="search" id="busca" placeholder="Buscar por nome, bairro ou culinária…" />
+    </div>
+    <div class="filters">
+      <button class="filter-chip active" data-filtro="todos">Todos</button>
+      <button class="filter-chip" data-filtro="fui">✓ Já fui</button>
+      <button class="filter-chip" data-filtro="quero">♡ Quero ir</button>
+    </div>
+  </div>
+
+  <p class="contador" id="contador"></p>
+
+  <!-- Restaurant list -->
+  <div id="lista-restaurantes"></div>
+
+  <!-- FAB -->
+  <button class="fab" onclick="abrirAdicionar()" title="Adicionar restaurante">+</button>
+
+  <!-- Modal: Restaurante -->
+  <div class="modal-overlay" id="modal-restaurante">
+    <div class="modal">
+      <div class="modal-handle"></div>
+      <h2 id="modal-titulo">Novo Restaurante</h2>
+      <form id="form-restaurante">
+        <div class="form-group">
+          <label for="input-nome">Nome do restaurante *</label>
+          <input type="text" id="input-nome" placeholder="Ex: Trattoria da Nonna" required autocomplete="off" />
+        </div>
+        <div class="form-group">
+          <label for="input-bairro">Bairro</label>
+          <input type="text" id="input-bairro" placeholder="Ex: Pinheiros" autocomplete="off" />
+        </div>
+        <div class="form-group">
+          <label for="input-culinaria">Tipo de culinária</label>
+          <input type="text" id="input-culinaria" placeholder="Ex: Italiana, Japonesa, Brasileira…" autocomplete="off" />
+        </div>
+        <div class="form-group">
+          <label for="input-fui">Status</label>
+          <select id="input-fui">
+            <option value="nao">♡ Quero ir</option>
+            <option value="sim">✓ Já fui</option>
+          </select>
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn btn-secondary" onclick="fecharModal('modal-restaurante')">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Salvar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Visita -->
+  <div class="modal-overlay" id="modal-visita">
+    <div class="modal">
+      <div class="modal-handle"></div>
+      <h2 id="modal-visita-titulo">Nova Visita</h2>
+      <form id="form-visita">
+        <div class="form-group">
+          <label for="input-visita-data">Data da visita</label>
+          <input type="date" id="input-visita-data" />
+        </div>
+
+        <hr class="section-divider" />
+        <p class="section-title">Avaliação</p>
+
+        <div class="form-group">
+          <label>Estrelas</label>
+          <div class="star-input">
+            <span>★</span><span>★</span><span>★</span><span>★</span><span>★</span>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="input-visita-comentario">O que achei</label>
+          <textarea id="input-visita-comentario" placeholder="Sua impressão geral sobre o restaurante…"></textarea>
+        </div>
+
+        <hr class="section-divider" />
+        <p class="section-title">O que consumi</p>
+
+        <div class="form-group">
+          <label for="input-visita-pratos">Pratos</label>
+          <textarea id="input-visita-pratos" placeholder="Ex: Risoto de cogumelos, Tiramisu…" style="min-height:64px;"></textarea>
+        </div>
+        <div class="form-group">
+          <label for="input-visita-drinks">Drinks / Bebidas</label>
+          <textarea id="input-visita-drinks" placeholder="Ex: Negroni, Vinho tinto, Água com gás…" style="min-height:64px;"></textarea>
+        </div>
+
+        <div class="form-actions">
+          <button type="button" class="btn btn-secondary" onclick="fecharModal('modal-visita')">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Salvar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Snackbar -->
+  <div class="snackbar" id="snackbar"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
