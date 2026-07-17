@@ -70,11 +70,18 @@ function snackbar(msg, cor = '#27ae60') {
 
 // ── Render ────────────────────────────────────────────────────────────────────
 
+function ultimaVisitaData(r) {
+  if (!r.visitas || r.visitas.length === 0) return '';
+  return r.visitas.map(v => v.data || '').sort().reverse()[0];
+}
+
 function filtrar() {
   return restaurantes
     .filter(r => {
       if (filtroStatus === 'fui' && !r.fui) return false;
       if (filtroStatus === 'quero' && r.fui) return false;
+      if (filtroStatus === 'recente' && !r.fui) return false;
+      if (filtroStatus === 'antigo' && !r.fui) return false;
       const q = busca.toLowerCase();
       if (!q) return true;
       return (
@@ -83,7 +90,19 @@ function filtrar() {
         r.culinaria.toLowerCase().includes(q)
       );
     })
-    .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+    .sort((a, b) => {
+      if (filtroStatus === 'recente') {
+        return ultimaVisitaData(b).localeCompare(ultimaVisitaData(a));
+      }
+      if (filtroStatus === 'antigo') {
+        const da = ultimaVisitaData(a), db2 = ultimaVisitaData(b);
+        if (!da && !db2) return a.nome.localeCompare(b.nome, 'pt-BR');
+        if (!da) return 1;
+        if (!db2) return -1;
+        return da.localeCompare(db2);
+      }
+      return a.nome.localeCompare(b.nome, 'pt-BR');
+    });
 }
 
 function renderLista() {
