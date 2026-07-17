@@ -380,10 +380,6 @@ document.addEventListener('DOMContentLoaded', () => {
     renderLista();
   });
 
-  document.querySelectorAll('.filter-chip').forEach(el => {
-    el.addEventListener('click', () => setFiltro(el.dataset.filtro));
-  });
-
   document.getElementById('form-restaurante').addEventListener('submit', salvarRestaurante);
   document.getElementById('form-visita').addEventListener('submit', salvarVisita);
 
